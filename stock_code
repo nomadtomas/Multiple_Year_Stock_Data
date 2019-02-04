@@ -1,0 +1,145 @@
+Sub Create_Report()
+
+    Application.ScreenUpdating = False
+    Application.DisplayStatusBar = False
+    Application.Calculation = xlCalculationManual
+
+    Dim ws As Worksheet
+    Dim A_lst_row As Long, I_lst_row As Long
+    Dim min As Long
+    Dim ticker1 As String, ticker2 As String
+    
+    For Each ws In ThisWorkbook.Sheets
+    
+    ws.Activate
+    A_lst_row = ws.Cells(Rows.Count, 1).End(xlUp).Row
+    I_lst_row = ws.Cells(Rows.Count, 9).End(xlUp).Row
+    
+    min = ws.Application.min(Range("B:B"))
+    
+    'Assigning headers for each sheet
+    ws.Columns("A:A").Copy
+    ws.Columns("I").PasteSpecial xlValues
+    ws.Range("I1").Value = "Ticker"
+    ws.Range("P1").Value = "Ticker"
+    ws.Range("L1").Value = "Total Stock Volume"
+    ws.Range("J1").Value = "Yearly Change"
+    ws.Range("K1").Value = "Percent Change"
+    ws.Range("Q1").Value = "Value"
+    ws.Range("O2").Value = "Greatest % Increase"
+    ws.Range("O3").Value = "Greatest % Decrease"
+    ws.Range("O4").Value = "Greatest Total Volume"
+    
+    'Remove duplicates in one column
+    ws.Range("$I$1:$I$" & I_lst_row).RemoveDuplicates Columns:=1, Header:=xlYes
+    
+    '***********************************************************************************
+    'This will go through data and grab the total volume, year change, and percent change
+    i = 2
+    Total_Vol = 0
+    For j = 2 To A_lst_row + 1
+    
+    'The tickers will decide when the items change from one stock to another
+        ticker1 = ws.Cells(i, 9).Value
+        ticker2 = ws.Cells(j + 1, 1).Value
+        MinChecker = ws.Cells(j, 2).Value
+        
+        If MinChecker = min And ticker1 = ticker2 Then
+            FirstNum = ws.Cells(j, 3).Value
+        End If
+            
+        If ticker1 <> ticker2 Then
+            LastNum = ws.Cells(j, 6).Value
+            Cells(i, 10).Value = LastNum - FirstNum
+            If FirstNum = 0 Then
+                ws.Cells(i, 11).Value = "NA"
+                ws.Cells(i, 12).Value = Total_Vol
+            Else
+                ws.Cells(i, 11).Value = ((FirstNum - LastNum) / FirstNum) * 100
+                ws.Cells(i, 12).Value = Total_Vol
+            End If
+            i = i + 1
+            Total_Vol = 0
+        End If
+        'This is adding up all the volumes that are the same
+            Total_Vol = Total_Vol + ws.Cells(j, 7).Value
+    Next j
+    
+    '*************************************************************************
+    Call Greatest_Inc_Dec
+    '*************************************************************************
+    Call Color_Format
+    '*************************************************************************
+    
+    ws.Columns("A:Q").EntireColumn.AutoFit
+    ws.Columns("J").EntireColumn.NumberFormat = "0.00"
+    ws.Columns("K").EntireColumn.NumberFormat = "0.00"
+    ws.Columns("L").EntireColumn.NumberFormat = "_(* #,##0_);_(* (#,##0);_(* ""-""??_);_(@_)"
+    ws.Range("Q2:Q3").NumberFormat = "0.00"
+    ws.Range("Q4").NumberFormat = "_(* #,##0_);_(* (#,##0);_(* ""-""??_);_(@_)"
+    
+    Next ws
+    
+    Application.ScreenUpdating = True
+    Application.DisplayStatusBar = True
+    Application.Calculation = xlCalculationAutomatic
+End Sub
+
+Sub Greatest_Inc_Dec()
+Application.ScreenUpdating = False
+Application.DisplayStatusBar = False
+Application.Calculation = xlCalculationManual
+
+    Dim MinPer As Double, MaxPer As Double, MaxVol
+    Dim lastrow As Long, rng1 As Range, rng2 As Range
+    
+    lastrow = Cells(Rows.Count, 11).End(xlUp).Row
+    Set rng1 = Range("$K$1:$K$" & lastrow)
+    Set rng2 = Range("$L$1:$L$" & lastrow)
+    
+    MinPer = Application.min(rng1)
+    MaxPer = Application.max(rng1)
+    MaxVol = Application.max(rng2)
+    
+    
+    For i = 2 To lastrow
+        If Cells(i, 11) = MaxPer Then
+            Range("P2").Value = Cells(i, 9).Value
+            Range("Q2").Value = MaxPer
+        ElseIf Cells(i, 11) = MinPer Then
+            Range("P3").Value = Cells(i, 9).Value
+            Range("Q3").Value = MinPer
+        ElseIf Cells(i, 12) = MaxVol Then
+            Range("P4").Value = Cells(i, 9)
+            Range("Q4").Value = MaxVol
+        End If
+    Next i
+
+Application.ScreenUpdating = True
+Application.DisplayStatusBar = True
+Application.Calculation = xlCalculationAutomatic
+    
+End Sub
+
+Sub Color_Format()
+    
+    Application.ScreenUpdating = False
+    Application.DisplayStatusBar = False
+    Application.Calculation = xlCalculationManual
+
+    Dim lastrow As Long
+    
+    lastrow = Cells(Rows.Count, 10).End(xlUp).Row
+    For i = 2 To lastrow
+        If Cells(i, 10).Value <= 0 Then
+        Cells(i, 10).Interior.Color = vbRed
+        Else
+        Cells(i, 10).Interior.Color = vbGreen
+        End If
+    Next i
+    
+    Application.ScreenUpdating = True
+    Application.DisplayStatusBar = True
+    Application.Calculation = xlCalculationAutomatic
+
+End Sub
